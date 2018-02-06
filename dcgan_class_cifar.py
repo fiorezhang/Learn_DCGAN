@@ -122,9 +122,10 @@ def train(BATCH_SIZE, SOURCE, SPLIT, INDEX):
     (X_train, y_train), (X_test, y_test) = cifar10.load_data()
     y_train = y_train.flatten()#2D -> 1D
 
-    num_split = int(X_train.shape[0]/SPLIT)
-    start_split = np.random.randint(X_train.shape[0] - num_split)
-    X_train, y_train = X_train[start_split:start_split+num_split], y_train[start_split:start_split+num_split]
+    if (SPLIT > 1):
+        num_split = int(X_train.shape[0]/SPLIT)
+        start_split = np.random.randint(X_train.shape[0] - num_split)
+        X_train, y_train = X_train[start_split:start_split+num_split], y_train[start_split:start_split+num_split]
 
     if (INDEX != -1):
         X_train, y_train = extract_by_index(X_train, y_train, INDEX)
