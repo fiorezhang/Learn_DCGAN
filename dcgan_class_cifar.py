@@ -84,6 +84,13 @@ def generator_containing_discriminator(g, d):
     model.add(d)
     return model
 
+def noise_random(number, size, method="uniform"):
+    if method == 'uniform':
+        return np.random.uniform(-1, 1, size=(number, size))
+    elif method == 'standard':
+        return np.random.standard_normal(size=(number, size))
+    else:
+        assert()
 
 def combine_images(generated_images):
     num = generated_images.shape[0]
@@ -191,7 +198,7 @@ def train(BATCH_SIZE, SOURCE, SPLIT, INDEX, DOUBLE=False):
         print("Epoch is", epoch)
         print("Number of batches", batchs)
         for index in range(batchs):
-            noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 256))
+            noise = noise_random(BATCH_SIZE, 256, 'standard')
             image_batch = X_train[index*BATCH_SIZE:(index+1)*BATCH_SIZE]
             generated_images = g.predict(noise, verbose=0)
             if index % 20 == 0:
@@ -200,13 +207,26 @@ def train(BATCH_SIZE, SOURCE, SPLIT, INDEX, DOUBLE=False):
                 Image.fromarray(image.astype(np.uint8)).save(
                     str(epoch)+"_"+str(index)+".png")
             X = np.concatenate((image_batch, generated_images))
-            y = [1] * BATCH_SIZE + [0] * BATCH_SIZE #1 True, 0 Fake, try to maximum exact
+            #y = [1] * BATCH_SIZE + [0] * BATCH_SIZE #1 True, 0 Fake, try to maximum exact
+            y = np.concatenate((np.random.uniform(0.8, 1.0, size=(BATCH_SIZE,)), np.random.uniform(0, 0.2, size=(BATCH_SIZE,)))) #~1 True, ~0 Fake, try to maximum exact
+            loop = 0
             d_loss = d.train_on_batch(X, y)
+            while d_loss > 1 and loop < 5: 
+            	d_loss = d.train_on_batch(X, y)
+                loop += 1
             print("batch %d d_loss : %f" % (index, d_loss))
-            noise = np.random.uniform(-1, 1, (BATCH_SIZE, 256))
+            #d_loss_r = d.train_on_batch(image_batch, [1] * BATCH_SIZE) #try to split true and fake into different batch, but cause the model crash
+            #d_loss_f = d.train_on_batch(generated_images, [0] * BATCH_SIZE)
+            #d_loss = d_loss_r + d_loss_f
+            #print("batch %d d_loss : %f, (r : %f, f : %f)" % (index, d_loss, d_loss_r, d_loss_f))
+            noise = noise_random(BATCH_SIZE, 256, 'standard')
+            y = np.random.uniform(0.8, 1.0, size=(BATCH_SIZE,))
             d.trainable = False
-            for _ in range(3):
-                g_loss = d_on_g.train_on_batch(noise, [1] * BATCH_SIZE) #1 True(actually Fake), try to maximum cheat the D
+            loop = 0
+            g_loss = d_on_g.train_on_batch(noise, y) #1 True(actually Fake), try to maximum cheat the D
+            while g_loss > 1 and loop < 5:
+                g_loss = d_on_g.train_on_batch(noise, y) #1 True(actually Fake), try to maximum cheat the D
+                loop += 1
             d.trainable = True
             print("batch %d g_loss : %f" % (index, g_loss))
             i_stat[i], d_loss_stat[i], g_loss_stat[i] = i, d_loss, g_loss
@@ -236,7 +256,7 @@ def generate(BATCH_SIZE, NICE=False):
         d_optim = RMSprop(lr=0.0002, decay=6e-8)
         d.compile(loss='binary_crossentropy', optimizer=d_optim, metrics=['accuracy'])
         d.load_weights('discriminator')
-        noise = np.random.uniform(-1, 1, (BATCH_SIZE*20, 256))
+        noise = noise_random(BATCH_SIZE*20, 256, 'standard')
         generated_images = g.predict(noise, verbose=1)
         d_pret = d.predict(generated_images, verbose=1)
         index = np.arange(0, BATCH_SIZE*20)
@@ -250,7 +270,7 @@ def generate(BATCH_SIZE, NICE=False):
             nice_images[i, :, :, :] = generated_images[idx, :, :, :]
         image = combine_images_rgb(nice_images)
     else:
-        noise = np.random.uniform(-1, 1, (BATCH_SIZE, 256))
+        noise = noise_random(BATCH_SIZE, 256, 'standard')
         generated_images = g.predict(noise, verbose=1)
         image = combine_images_rgb(generated_images)
     image = image*127.5+127.5
