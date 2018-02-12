@@ -171,14 +171,15 @@ def noise_random(number, size, method="uniform"):
         #print('standard')
         return np.random.standard_normal(size=(number, size))
     elif method == 'test':
-        ret = np.zeros((number, size))
-        base = 0.5
+        ret = np.zeros((number, size), dtype=float)
+        base = 1.0
         seed = np.linspace(-base, base, number, endpoint=True)
-        divid = base/number
+        divid = (base/number) * 50
         for i in range (number):
             #ret[i] = seed[i]
-            ret[i] = np.random.uniform(seed[i]-divid, seed[i]+divid, size=(size))
-            ret[i] = np.random.standard_normal(size=(size, ))
+            ret[i] = np.random.uniform(seed[i]-divid, seed[i]+divid, size=(size,))
+            #ret[i] = np.random.standard_normal(size=(size, ))
+        print(ret)
         return ret
     else:
         assert()
